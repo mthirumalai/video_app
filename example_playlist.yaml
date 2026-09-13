@@ -1,0 +1,75 @@
+# Example playlist for make_video.py
+#
+# Copy this file, point it at your own exported clips/photos/maps, reorder
+# the "items" list into the order you want them to appear, and run:
+#
+#   python3 make_video.py my_playlist.yaml
+#
+# All paths below are relative to wherever this YAML file lives (or use
+# absolute paths).
+
+output: vacation_video.mp4
+
+resolution: [1920, 1080]      # output video size
+fps: 30
+
+photo_duration: 4.0           # default seconds to show each photo
+map_duration: 6.0             # default seconds to show each map/route image
+ken_burns: true                # slow zoom/pan on photos (not applied to maps)
+
+# Default transition between items. Any item can override this for just its
+# own incoming boundary (see the "map" and "tram_ride" items below) — mix
+# and match freely, e.g. fades everywhere except one hard "cut".
+transition: fade               # "cut"/"none" for a jump cut, or an ffmpeg
+                                # xfade name: fade, dissolve, wipeleft,
+                                # wiperight, wipeup, wipedown, slideleft,
+                                # circleopen, pixelize, radial, ... (full
+                                # list: https://ffmpeg.org/ffmpeg-filters.html#xfade)
+transition_duration: 0.75      # seconds, ignored for "cut"/"none"
+
+# Optional background music track, looped/trimmed to the final length and
+# mixed under the clips' own audio. Comment out or delete to skip music.
+# music: audio/vacation_theme.mp3
+# music_volume: 0.25
+
+items:
+  # A full-frame title card — solid background + centered text, useful as a
+  # section header. Doesn't need a media file.
+  - type: title
+    text: "Portugal, June 2026"
+    duration: 3
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - type: video
+    path: clips/arrival.mov
+    start: "00:00:05"          # trim the source clip: keep only this window
+    end: "00:00:32"
+    title: "Landing in Lisbon"
+
+  - type: photo
+    path: photos/hotel_view.jpg
+    title: "The view from our room"
+    duration: 6                # override the default photo_duration just for this photo
+
+  - type: map
+    path: maps/day1_route.png
+    title: "Day 1 — Alfama walking route"
+    transition: wipeleft       # a different transition just for this boundary
+    transition_duration: 0.5
+
+  - type: video
+    path: clips/tram_ride.mp4
+    # No start/end given -> the whole clip is used, start to finish.
+    title: "Riding the 28"
+    transition: cut            # a hard jump cut into this clip, no crossfade
+
+  - type: photo
+    path: photos/pasteis_de_nata.jpg
+    duration: 3
+
+  - type: video
+    path: clips/sunset_viewpoint.mp4
+    start: "00:01:10"
+    end: "00:02:00"
+    title: "Sunset from Miradouro da Graça"

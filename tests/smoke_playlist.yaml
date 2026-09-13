@@ -1,0 +1,47 @@
+# Smoke-test playlist: exercises every item type (title, video, photo, map)
+# and every transition kind (default fade, per-item "cut", per-item named
+# xfade) in one small, fast-to-render video built entirely from the
+# synthetic assets in fixtures/ (see generate_test_assets.py).
+#
+# Expected total duration ~= 24.4s:
+#   title(2) + clip1(4, fade-in 0.5) + photo1(6, cut) + photo2(3, fade 0.5)
+#   + map1(3, wipeleft 0.6) + clip2(8, cut)
+#   = (2+4+6+3+3+8) - (0.5+0+0.5+0.6+0) = 26 - 1.6 = 24.4
+# ffmpeg frame-boundary rounding means +/-1s is fine.
+
+output: smoke_output.mp4
+resolution: [960, 540]
+fps: 24
+photo_duration: 3.0
+transition: fade
+transition_duration: 0.5
+
+items:
+  - type: title
+    text: "Smoke Test: Titles & Transitions"
+    duration: 2
+
+  - type: video
+    path: fixtures/clips/clip1.mp4
+    start: 0
+    end: 4
+    # default fade in from the title
+
+  - type: photo
+    path: fixtures/photos/photo1.jpg
+    duration: 6          # per-item override of the 3.0 default
+    transition: cut       # jump cut into this photo instead of a fade
+
+  - type: photo
+    path: fixtures/photos/photo2.jpg
+    # default duration (3.0), default fade transition
+
+  - type: map
+    path: fixtures/maps/map1.png
+    transition: wipeleft
+    transition_duration: 0.6
+
+  - type: video
+    path: fixtures/clips/clip2.mp4
+    # no start/end -> whole clip
+    transition: cut
