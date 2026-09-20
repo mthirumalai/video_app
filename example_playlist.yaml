@@ -29,7 +29,10 @@ transition_duration: 0.75      # seconds, ignored for "cut"/"none"
 
 # Optional background music track, looped/trimmed to the final length and
 # mixed under the clips' own audio. Comment out or delete to skip music.
+# Can be a local file, or a URL (requires yt-dlp on PATH) that gets
+# downloaded once and cached in .music_cache/ next to this playlist.
 # music: audio/vacation_theme.mp3
+# music: https://youtu.be/dQw4w9WgXcQ
 # music_volume: 0.25
 
 items:

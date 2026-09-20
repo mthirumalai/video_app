@@ -12,11 +12,13 @@ Requires:
     - Python 3.9+
     - PyYAML                    (`pip3 install pyyaml`)
     - Pillow                    (`pip3 install pillow`)
+    - yt-dlp on PATH, only if `music:` is a URL (macOS: `brew install yt-dlp`)
 
 See README.md and example_playlist.yaml for the playlist format.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -438,8 +440,32 @@ def concat_with_transitions(segment_paths, durations, transitions, out_path):
     run(cmd)
 
 
+def resolve_music_source(cfg):
+    """Return a local audio file path for cfg.music.
+
+    A local path is resolved relative to the playlist as usual. A URL
+    (e.g. a YouTube link) is downloaded via yt-dlp into a cache directory
+    next to the playlist, keyed by a hash of the URL, so re-running on
+    the same playlist doesn't re-download the track every time.
+    """
+    if not cfg.music.startswith(("http://", "https://")):
+        return cfg.resolve(cfg.music)
+
+    if shutil.which("yt-dlp") is None:
+        sys.exit("Missing dependency: music is a URL, run  brew install yt-dlp  (or  pip3 install yt-dlp)")
+
+    cache_dir = os.path.join(cfg.base_dir, ".music_cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    key = hashlib.sha1(cfg.music.encode()).hexdigest()[:16]
+    cache_path = os.path.join(cache_dir, f"{key}.mp3")
+    if not os.path.exists(cache_path):
+        run(["yt-dlp", "-x", "--audio-format", "mp3",
+             "-o", os.path.join(cache_dir, f"{key}.%(ext)s"), cfg.music])
+    return cache_path
+
+
 def add_music(cfg, video_path, out_path):
-    music_path = cfg.resolve(cfg.music)
+    music_path = resolve_music_source(cfg)
     total_dur = ffprobe_duration(video_path)
     cmd = [
         "ffmpeg", "-y",

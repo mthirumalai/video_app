@@ -15,6 +15,14 @@ brew install ffmpeg
 pip3 install pyyaml pillow
 ```
 
+If you want background music pulled straight from a YouTube (or other)
+URL instead of a local file, also install
+[yt-dlp](https://github.com/yt-dlp/yt-dlp):
+
+```bash
+brew install yt-dlp
+```
+
 ## 2. Export your media from Photos
 
 For each clip/photo/map you want in the video:
@@ -92,8 +100,25 @@ Top-level settings (all optional, shown with defaults):
 | `ken_burns` | `true` | slow zoom/pan on photos (maps and titles stay static) |
 | `transition` | `fade` | default transition between every pair of items (see below) |
 | `transition_duration` | `0.75` | default crossfade length in seconds |
-| `music` | *(none)* | path to a background audio track, looped/trimmed to fit |
+| `music` | *(none)* | path to a background audio track, or a URL (e.g. YouTube) — looped/trimmed to fit |
 | `music_volume` | `0.25` | relative volume of the music under clip audio |
+
+### Music
+
+`music` accepts either a local file path or a URL (YouTube and anything
+else [yt-dlp](https://github.com/yt-dlp/yt-dlp) supports):
+
+```yaml
+music: audio/vacation_theme.mp3
+# or
+music: https://youtu.be/dQw4w9WgXcQ
+```
+
+A URL requires `yt-dlp` on your PATH (see setup above). The audio is
+downloaded once into a `.music_cache/` folder next to the playlist and
+reused on later runs of the same playlist, so re-rendering while you
+tweak the video doesn't re-download it. Delete `.music_cache/` if you
+change the URL and want a fresh download.
 
 ### Transitions
 
