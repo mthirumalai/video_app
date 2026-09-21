@@ -4,12 +4,14 @@ Guidance for Claude Code (or any future session) working in this repo.
 
 ## What this is
 
-A small, single-file Python tool (`make_video.py`) that assembles a vacation
-video from exported video clips, photos, and map/route screenshots, driven
-by a YAML "playlist" file. It exists because Claude has no direct access to
-a Photos library — the user exports media by hand into a folder, then this
-script handles trimming, captioning, sequencing, transitions, and (optional)
-background music.
+A small Python tool (`make_video.py`) that assembles a vacation video from
+exported video clips, photos, and map/route screenshots, driven by a YAML
+"playlist" file. It exists because Claude has no direct access to a Photos
+library — the user exports media by hand into a folder, then this script
+handles trimming, captioning, sequencing, transitions, and (optional)
+background music. A companion script, `add_new_media.py`, scans a media
+folder for files a playlist doesn't reference yet and appends items for
+them, so growing a playlist doesn't mean hand-typing every new export.
 
 User-facing docs — playlist format, setup, examples — live in `README.md`
 and `example_playlist.yaml`. Read those before changing anything the user
@@ -45,6 +47,19 @@ brew install ffmpeg                # or any ffmpeg with libx264/aac
    `transition`/`transition_duration` when an item doesn't override them.
 5. `add_music` — optional background track, looped/trimmed and mixed in
    after joining.
+
+`-nop`/`--dry-run` short-circuits `main()` into `validate_playlist`
+instead of the pipeline above: it checks every item's `type` (explicit or
+inferred), required fields, and `start`/`end`/`duration` parse, and that
+every referenced media file exists on disk — no ffmpeg/ffprobe calls, no
+temp dir. Keep it in sync with whatever a real render actually requires
+(e.g. a new required field on an item type needs a check added here too).
+
+`infer_type` and the `VIDEO_EXTENSIONS`/`IMAGE_EXTENSIONS` sets let `type`
+be omitted on a playlist item (see the README). `add_new_media.py`
+imports `make_video` and reuses these directly rather than duplicating
+the classification logic — keep them as the single source of truth if
+you touch either script.
 
 ## Gotchas already paid for — don't reintroduce these
 
@@ -99,15 +114,18 @@ look at it:
 ffmpeg -ss <seconds> -i tests/smoke_output.mp4 -frames:v 1 frame.png
 ```
 
-The user's own playlists (e.g. `southofberganislands.yaml`) reference real
-exported media in `media/`, which isn't committed to git (see
-`.gitignore`) and won't exist in a fresh checkout — don't rely on it for
-tests, but it's there for a final manual check on the user's machine.
+The user's own playlists (e.g. `southofbergenislands/storyboard.yaml`)
+reference real exported media in a sibling `media/` (and `maps/`) folder,
+which isn't committed to git (see `.gitignore`) and won't exist in a
+fresh checkout — don't rely on it for tests, but it's there for a final
+manual check on the user's machine.
 
 ## Conventions
 
-- Single file (`make_video.py`) by design — it's small; don't split it
-  into a package unless it grows substantially.
+- `make_video.py` is a single file by design — it's small; don't split it
+  into a package unless it grows substantially. A separate small script
+  (like `add_new_media.py` or `tests/generate_test_assets.py`) that does
+  one focused thing and imports `make_video` for shared logic is fine.
 - Every ffmpeg invocation goes through the `run()` helper so failures
   raise with the full ffmpeg stderr/stdout attached — don't call
   `subprocess` directly elsewhere.

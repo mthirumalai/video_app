@@ -1,7 +1,9 @@
 # Smoke-test playlist: exercises every item type (title, video, photo, map)
 # and every transition kind (default fade, per-item "cut", per-item named
 # xfade) in one small, fast-to-render video built entirely from the
-# synthetic assets in fixtures/ (see generate_test_assets.py).
+# synthetic assets in fixtures/ (see generate_test_assets.py). Also
+# exercises `type:` inference (title/clip1/photo1/map1 omit it; photo2/
+# clip2 keep it explicit) alongside explicit `type:`.
 #
 # Expected total duration ~= 24.4s:
 #   title(2) + clip1(4, fade-in 0.5) + photo1(6, cut) + photo2(3, fade 0.5)
@@ -17,18 +19,15 @@ transition: fade
 transition_duration: 0.5
 
 items:
-  - type: title
-    text: "Smoke Test: Titles & Transitions"
+  - text: "Smoke Test: Titles & Transitions"   # type omitted -> inferred "title" (no path)
     duration: 2
 
-  - type: video
-    path: fixtures/clips/clip1.mp4
+  - path: fixtures/clips/clip1.mp4   # type omitted -> inferred "video" (.mp4)
     start: 0
     end: 4
     # default fade in from the title
 
-  - type: photo
-    path: fixtures/photos/photo1.jpg
+  - path: fixtures/photos/photo1.jpg  # type omitted -> inferred "photo" (not in a maps/ folder)
     duration: 6          # per-item override of the 3.0 default
     transition: cut       # jump cut into this photo instead of a fade
 
@@ -36,8 +35,7 @@ items:
     path: fixtures/photos/photo2.jpg
     # default duration (3.0), default fade transition
 
-  - type: map
-    path: fixtures/maps/map1.png
+  - path: fixtures/maps/map1.png   # type omitted -> inferred "map" (sits in a maps/ folder)
     transition: wipeleft
     transition_duration: 0.6
 

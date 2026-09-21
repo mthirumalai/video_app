@@ -339,10 +339,92 @@ def build_title_segment(cfg, item, out_path, tmpdir):
     run(cmd)
 
 
+VIDEO_EXTENSIONS = {".mov", ".mp4", ".m4v", ".avi", ".mkv", ".webm"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".gif", ".bmp", ".tif", ".tiff"}
+
+
+def infer_type(item):
+    """Infer an item's type when `type` is omitted.
+
+    - No `path` (just `text`) -> title.
+    - `path`'s extension is a known video format -> video.
+    - `path`'s extension is a known image format -> map if the file sits
+      directly in a `maps/` folder, otherwise photo.
+    """
+    path = item.get("path")
+    if path is None:
+        if "text" in item:
+            return "title"
+        raise ValueError(f"Item has no 'type' and no 'path'/'text' to infer one from: {item!r}")
+
+    ext = os.path.splitext(path)[1].lower()
+    if ext in VIDEO_EXTENSIONS:
+        return "video"
+    if ext in IMAGE_EXTENSIONS:
+        return "map" if os.path.basename(os.path.dirname(path)) == "maps" else "photo"
+    raise ValueError(
+        f"Can't infer type for {path!r} (unrecognized extension {ext!r}) — add an explicit 'type:' field"
+    )
+
+
+def validate_playlist(items, base_dir):
+    """Check the playlist is well-formed and every referenced media file
+    exists on disk, without rendering anything. Returns a list of problem
+    strings (empty if everything checks out).
+    """
+    problems = []
+    for i, item in enumerate(items):
+        label = f"item {i+1}"
+        try:
+            kind = item.get("type") or infer_type(item)
+        except ValueError as e:
+            problems.append(f"{label}: {e}")
+            continue
+
+        if kind == "title":
+            if not item.get("text"):
+                problems.append(f"{label} (title): missing 'text'")
+            continue
+
+        if kind not in ("video", "photo", "map"):
+            problems.append(f"{label}: unknown type {kind!r}")
+            continue
+
+        path = item.get("path")
+        if not path:
+            problems.append(f"{label} ({kind}): missing 'path'")
+        else:
+            full_path = path if os.path.isabs(path) else os.path.join(base_dir, path)
+            if not os.path.isfile(full_path):
+                problems.append(f"{label} ({kind}): media file not found: {full_path}")
+
+        if kind == "video":
+            for field in ("start", "end"):
+                if field in item:
+                    try:
+                        parse_timecode(item[field])
+                    except (TypeError, ValueError):
+                        problems.append(f"{label} ({kind}): invalid {field!r}: {item[field]!r}")
+        else:
+            if "duration" in item:
+                try:
+                    float(item["duration"])
+                except (TypeError, ValueError):
+                    problems.append(f"{label} ({kind}): invalid 'duration': {item['duration']!r}")
+
+        if "transition_duration" in item:
+            try:
+                float(item["transition_duration"])
+            except (TypeError, ValueError):
+                problems.append(f"{label} ({kind}): invalid 'transition_duration': {item['transition_duration']!r}")
+
+    return problems
+
+
 def build_segments(cfg, items, tmpdir):
     segment_paths = []
     for i, item in enumerate(items):
-        kind = item["type"]
+        kind = item.get("type") or infer_type(item)
         out_path = os.path.join(tmpdir, f"seg_{i:03d}.mp4")
         label = item.get("title") or item.get("text") or os.path.basename(item.get("path", kind))
         print(f"[{i+1}/{len(items)}] {kind}: {label}")
@@ -490,17 +572,29 @@ def main():
     ap.add_argument("playlist", help="Path to the YAML playlist file")
     ap.add_argument("-o", "--output", help="Output video path (overrides playlist 'output')")
     ap.add_argument("--keep-temp", action="store_true", help="Keep intermediate segment files (for debugging)")
+    ap.add_argument("-nop", "--dry-run", action="store_true",
+                     help="Validate the playlist and check referenced media files exist, without rendering")
     args = ap.parse_args()
 
     with open(args.playlist) as f:
         data = yaml.safe_load(f)
 
     base_dir = os.path.dirname(os.path.abspath(args.playlist))
-    cfg = Config(data, base_dir)
-    items = data["items"]
+    items = data.get("items")
     if not items:
         sys.exit("Playlist has no items.")
 
+    if args.dry_run:
+        problems = validate_playlist(items, base_dir)
+        if problems:
+            print(f"{len(problems)} problem(s) found:")
+            for p in problems:
+                print(f"  - {p}")
+            sys.exit(1)
+        print(f"OK: {len(items)} item(s), all media files present.")
+        return
+
+    cfg = Config(data, base_dir)
     output_path = args.output or data.get("output", "vacation_video.mp4")
     if not os.path.isabs(output_path):
         output_path = os.path.join(base_dir, output_path)

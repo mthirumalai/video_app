@@ -28,7 +28,9 @@ brew install yt-dlp
 For each clip/photo/map you want in the video:
 - **Videos & photos:** select them in Photos → File → Export → Export
   Unmodified (or "Export N Photos/Videos") → save into a folder, e.g.
-  `~/Movies/iceland-trip/clips` and `~/Movies/iceland-trip/photos`.
+  `~/Movies/iceland-trip/media`. Videos and photos can live together —
+  the playlist's `type:` field tells the script which is which, not the
+  folder.
 - **Maps/routes:** screenshot or export the map image (from Apple/Google
   Maps, AllTrails, a GPS app, etc.) as a PNG/JPG into e.g.
   `~/Movies/iceland-trip/maps`.
@@ -53,13 +55,13 @@ items:
     duration: 3
 
   - type: video
-    path: clips/arrival.mov
+    path: media/arrival.mov
     start: "00:00:05"     # only use this part of the source clip
     end: "00:00:32"
     title: "Landing in Lisbon"
 
   - type: photo
-    path: photos/hotel_view.jpg
+    path: media/hotel_view.jpg
     title: "The view from our room"
     duration: 6            # override the default photo duration for just this one
 
@@ -73,7 +75,7 @@ Paths are relative to wherever the `.yaml` file lives. Full item format:
 
 | Field | Applies to | Meaning |
 |---|---|---|
-| `type` | all | `video`, `photo`, `map`, or `title` |
+| `type` | all, optional | `video`, `photo`, `map`, or `title` — inferred when omitted (see below) |
 | `path` | video, photo, map | path to the source file (not used by `title`) |
 | `title` | video, photo, map, optional | on-screen caption overlaid on the media |
 | `text` | title | the text shown on a full-frame title card (supports `\n` for line breaks; long lines wrap automatically) |
@@ -85,6 +87,16 @@ Paths are relative to wherever the `.yaml` file lives. Full item format:
 | `font_size` | title, optional | overrides `title_font_size` for just this card |
 | `transition` | any item after the first, optional | transition used to cut **into** this item from the one before it — overrides the playlist-wide default for just this boundary. `cut` (or `none`) is an instant jump cut with no blend; anything else is the name of an ffmpeg `xfade` transition (see below) |
 | `transition_duration` | same as above, optional | overrides the playlist-wide default duration for just this boundary (ignored for `cut`/`none`) |
+
+If `type` is omitted, it's inferred: an item with no `path` (just `text`)
+is a `title`; a `path` ending in a video extension (`.mov`, `.mp4`, `.m4v`,
+`.avi`, `.mkv`, `.webm`) is a `video`; a `path` ending in an image
+extension (`.jpg`, `.jpeg`, `.png`, `.heic`, `.heif`, `.gif`, `.bmp`,
+`.tif`, `.tiff`) is a `map` if it sits directly inside a `maps/` folder,
+otherwise a `photo`. An unrecognized extension raises an error asking for
+an explicit `type:`. Set `type` explicitly to override the inference for
+any item (e.g. a photo you keep outside `maps/` but still want treated
+as a map).
 
 Top-level settings (all optional, shown with defaults):
 
@@ -138,12 +150,12 @@ transition: fade   # the default for the whole video
 
 items:
   - type: video
-    path: clips/a.mov
+    path: media/a.mov
   - type: video
-    path: clips/b.mov
+    path: media/b.mov
     transition: cut       # hard cut into this clip specifically
   - type: photo
-    path: photos/c.jpg
+    path: media/c.jpg
     transition: wipeleft  # a wipe into this one instead
 ```
 
@@ -162,6 +174,41 @@ render.
 Useful flags:
 - `-o out.mp4` — override the output path
 - `--keep-temp` — keep the intermediate per-item clips (for debugging)
+- `-nop` / `--dry-run` — check the playlist without rendering: validates
+  every item (known `type`, required fields, parseable `start`/`end`/
+  `duration`) and confirms every referenced media file actually exists,
+  then exits — nothing is decoded or written. Handy after hand-editing a
+  playlist or running `add_new_media.py`, especially before a long render.
+
+## Keeping a storyboard up to date
+
+If you export more clips/photos into a folder you've already started a
+playlist from, `add_new_media.py` scans it for files the playlist doesn't
+reference yet and appends an item for each one — no path field to hand-type:
+
+```bash
+python3 add_new_media.py my_trip.yaml media/
+```
+
+It figures out each new file's type the same way `make_video.py` infers
+`type` when it's omitted (video/photo by extension, map if the file's in
+a `maps/` folder — see the `type` field above), sorts new files by
+filename, and appends them to the end of the playlist's `items` list —
+your existing formatting and comments are left alone. `start`/`end`/`title`
+(for videos) or `duration`/`title` (for photos/maps) are added commented
+out, so you can uncomment and fill in only the ones you need:
+
+```yaml
+  - path: media/IMG_0710.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+```
+
+Files already referenced elsewhere in the playlist, hidden files (like
+`.DS_Store`), and files with an unrecognized extension are skipped —
+running it again after uncommenting/editing is safe and won't duplicate
+anything already listed.
 
 ## Tips
 

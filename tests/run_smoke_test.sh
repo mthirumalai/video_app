@@ -13,6 +13,10 @@ echo "== Generating synthetic fixtures =="
 python3 "$HERE/generate_test_assets.py"
 
 echo
+echo "== Validating smoke_playlist.yaml (-nop) =="
+python3 "$ROOT/make_video.py" -nop "$HERE/smoke_playlist.yaml"
+
+echo
 echo "== Rendering smoke_playlist.yaml =="
 python3 "$ROOT/make_video.py" "$HERE/smoke_playlist.yaml"
 

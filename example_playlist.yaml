@@ -1,6 +1,6 @@
 # Example playlist for make_video.py
 #
-# Copy this file, point it at your own exported clips/photos/maps, reorder
+# Copy this file, point it at your own exported media/maps, reorder
 # the "items" list into the order you want them to appear, and run:
 #
 #   python3 make_video.py my_playlist.yaml
@@ -36,8 +36,10 @@ transition_duration: 0.75      # seconds, ignored for "cut"/"none"
 # music_volume: 0.25
 
 items:
-  # A full-frame title card — solid background + centered text, useful as a
-  # section header. Doesn't need a media file.
+  # `type` is optional — if omitted it's inferred from the item (no `path`
+  # + `text` -> title; video/image extension -> video/photo; an image
+  # directly inside a `maps/` folder -> map). Shown explicitly below for
+  # clarity, except a couple of items further down that leave it out.
   - type: title
     text: "Portugal, June 2026"
     duration: 3
@@ -45,13 +47,13 @@ items:
     # text_color: "#FFFFFF"   # optional, defaults to white
 
   - type: video
-    path: clips/arrival.mov
+    path: media/arrival.mov
     start: "00:00:05"          # trim the source clip: keep only this window
     end: "00:00:32"
     title: "Landing in Lisbon"
 
   - type: photo
-    path: photos/hotel_view.jpg
+    path: media/hotel_view.jpg
     title: "The view from our room"
     duration: 6                # override the default photo_duration just for this photo
 
@@ -61,18 +63,16 @@ items:
     transition: wipeleft       # a different transition just for this boundary
     transition_duration: 0.5
 
-  - type: video
-    path: clips/tram_ride.mp4
+  - path: media/tram_ride.mp4   # type omitted -> inferred as "video" from the extension
     # No start/end given -> the whole clip is used, start to finish.
     title: "Riding the 28"
     transition: cut            # a hard jump cut into this clip, no crossfade
 
-  - type: photo
-    path: photos/pasteis_de_nata.jpg
+  - path: media/pasteis_de_nata.jpg  # type omitted -> inferred as "photo"
     duration: 3
 
   - type: video
-    path: clips/sunset_viewpoint.mp4
+    path: media/sunset_viewpoint.mp4
     start: "00:01:10"
     end: "00:02:00"
     title: "Sunset from Miradouro da Graça"
