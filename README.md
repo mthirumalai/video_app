@@ -82,11 +82,13 @@ Paths are relative to wherever the `.yaml` file lives. Full item format:
 | `start`, `end` | video | portion of the clip to use — seconds or `HH:MM:SS`. **Omit both to use the entire clip start-to-finish** (no need to time it in another app first). |
 | `duration` | photo, map, title | how long to show it, in seconds — **overrides the playlist-wide default for just this item** (default: `photo_duration` / `map_duration` / `title_duration`) |
 | `ken_burns` | photo | set `false` to disable the slow zoom for just this photo |
+| `fit` | video, photo, map | `cover` (default) or `contain` — overrides the playlist-wide default for just this item (see below) |
 | `background` | title, optional | background color, e.g. `"#000000"` (default: black) |
 | `text_color` | title, optional | text color (default: white) |
 | `font_size` | title, optional | overrides `title_font_size` for just this card |
 | `transition` | any item after the first, optional | transition used to cut **into** this item from the one before it — overrides the playlist-wide default for just this boundary. `cut` (or `none`) is an instant jump cut with no blend; anything else is the name of an ffmpeg `xfade` transition (see below) |
 | `transition_duration` | same as above, optional | overrides the playlist-wide default duration for just this boundary (ignored for `cut`/`none`) |
+| `music_volume_during_video` | video, optional | overrides the playlist-wide default (or `music_volume`) for just this clip's music volume (see [Music](#music) below) |
 
 If `type` is omitted, it's inferred: an item with no `path` (just `text`)
 is a `title`; a `path` ending in a video extension (`.mov`, `.mp4`, `.m4v`,
@@ -110,10 +112,12 @@ Top-level settings (all optional, shown with defaults):
 | `title_duration` | `3.0` | default seconds per title card |
 | `title_font_size` | `64` | default title card text size |
 | `ken_burns` | `true` | slow zoom/pan on photos (maps and titles stay static) |
+| `fit` | `cover` | `cover` or `contain` — default for every video/photo/map (see below) |
 | `transition` | `fade` | default transition between every pair of items (see below) |
 | `transition_duration` | `0.75` | default crossfade length in seconds |
 | `music` | *(none)* | path to a background audio track, or a URL (e.g. YouTube) — looped/trimmed to fit |
-| `music_volume` | `0.25` | relative volume of the music under clip audio |
+| `music_volume` | `0.25` | relative volume of the music under clip audio (used during photos/maps/titles, and during videos unless overridden below) |
+| `music_volume_during_video` | same as `music_volume` | relative volume of the music specifically while a video item's own audio is playing (see [Music](#music) below) |
 
 ### Music
 
@@ -131,6 +135,58 @@ downloaded once into a `.music_cache/` folder next to the playlist and
 reused on later runs of the same playlist, so re-rendering while you
 tweak the video doesn't re-download it. Delete `.music_cache/` if you
 change the URL and want a fresh download.
+
+By default `music_volume` applies for the entire video — the same
+relative music level whether a photo (no competing audio) or a video
+clip (which has its own audio) is on screen, which can bury a clip's
+own dialogue/ambient sound under the music. `music_volume_during_video`
+sets a separate, usually lower, music volume for just the stretches
+where a video item's own segment is playing — photos/maps/titles always
+use `music_volume` since they have no competing audio:
+
+```yaml
+music_volume: 0.25                # during photos/maps/titles, and any
+                                   # video that doesn't override this below
+music_volume_during_video: 0.1    # during video clips generally
+
+items:
+  - type: video
+    path: media/interview.mov
+    music_volume_during_video: 0.05   # extra-quiet, just for this one clip
+```
+
+It defaults to the same value as `music_volume` (no change unless you
+set it). Both fade out together over the last 2 seconds of the video
+regardless of what's playing at the very end.
+
+### Fit (aspect ratio / cropping)
+
+`fit` controls how a source that doesn't already match the output
+`resolution`'s aspect ratio gets scaled — top-level for a playlist-wide
+default, or per-item to override just that one:
+
+- `cover` (default) — scale up/down to fill the whole frame, cropping
+  whatever overflows. Good for sources already close to the output's
+  aspect ratio; a source with a very different aspect ratio (most
+  commonly a vertical/portrait phone video or photo dropped into a
+  16:9 landscape video) gets a lot cropped off, since filling the frame
+  means the overflow has to go somewhere.
+- `contain` — scale up/down to fit entirely inside the frame, padding
+  the leftover space with black borders (letterbox/pillarbox) instead
+  of cropping anything. Nothing is cropped or stretched, at the cost of
+  black bars for anything that isn't already the output's aspect ratio.
+  On a photo, this also disables the Ken Burns zoom for that item
+  (zooming into a padded image would eventually crop into it anyway,
+  defeating the point) — it's shown static, like a map.
+
+```yaml
+fit: cover   # playlist-wide default
+
+items:
+  - type: video
+    path: media/vertical_phone_video.mov
+    fit: contain   # keep this one letterboxed instead of cropped
+```
 
 ### Transitions
 
@@ -218,6 +274,10 @@ anything already listed.
 - Maps default to a longer, static display (no zoom) so routes stay
   readable; add `ken_burns: true` on a specific map item if you want it
   panned anyway.
+- iPhone videos/photos shot vertical get heavily cropped by the default
+  `fit: cover` (see [Fit](#fit-aspect-ratio--cropping) above) — set
+  `fit: contain` on those items (or `fit: contain` at the top level for
+  the whole playlist) to letterbox them instead.
 - Use `type: title` for section headers ("Day 2: The Fjords") between groups
   of clips — no media file needed, just `text`.
 - Captions are drawn with Pillow and composited onto each clip, so they

@@ -16,6 +16,9 @@ fps: 30
 photo_duration: 4.0           # default seconds to show each photo
 map_duration: 6.0             # default seconds to show each map/route image
 ken_burns: true                # slow zoom/pan on photos (not applied to maps)
+fit: cover                     # "cover" (fill frame, cropping overflow) or
+                                # "contain" (letterbox, no cropping/distortion)
+                                # -- see the "sunset_viewpoint" item below
 
 # Default transition between items. Any item can override this for just its
 # own incoming boundary (see the "map" and "tram_ride" items below) — mix
@@ -34,6 +37,10 @@ transition_duration: 0.75      # seconds, ignored for "cut"/"none"
 # music: audio/vacation_theme.mp3
 # music: https://youtu.be/dQw4w9WgXcQ
 # music_volume: 0.25
+# music_volume_during_video: 0.1  # quieter while a video clip's own audio
+                                   # plays, so it isn't buried under the
+                                   # music -- see "arrival" item below;
+                                   # defaults to music_volume (no ducking)
 
 items:
   # `type` is optional — if omitted it's inferred from the item (no `path`
@@ -51,6 +58,8 @@ items:
     start: "00:00:05"          # trim the source clip: keep only this window
     end: "00:00:32"
     title: "Landing in Lisbon"
+    # music_volume_during_video: 0.05   # extra-quiet just for this clip,
+                                         # overriding the playlist-wide value
 
   - type: photo
     path: media/hotel_view.jpg
@@ -76,3 +85,9 @@ items:
     start: "00:01:10"
     end: "00:02:00"
     title: "Sunset from Miradouro da Graça"
+
+  - type: video
+    path: media/vertical_phone_video.mov
+    fit: contain               # shot vertical on a phone -- letterbox instead
+                                # of cropping most of the frame away
+    title: "Up the Santa Justa lift"

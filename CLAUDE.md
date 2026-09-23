@@ -35,7 +35,12 @@ brew install ffmpeg                # or any ffmpeg with libx264/aac
      the whole clip if both are omitted), optionally composites a caption.
    - `build_still_segment` — turns a photo/map into a video segment;
      photos get a Ken Burns zoom (`zoompan`), maps stay static so routes
-     stay readable.
+     stay readable. A `fit: contain` item stays static too (see below).
+   - Both call `scale_to_frame_vf` (via `resolve_fit`) to bring the source
+     to the output resolution: `cover` (default) scales to fill the frame
+     and crops the overflow, `contain` scales to fit inside the frame and
+     pads with black borders instead of cropping or distorting anything —
+     added for vertical/portrait phone media, which `cover` crops hard.
    - `build_title_segment` — renders a full-frame solid-background +
      centered, word-wrapped text card via Pillow. No source media.
 3. `build_segments` dispatches each item to the right builder by `type`.
@@ -45,15 +50,26 @@ brew install ffmpeg                # or any ffmpeg with libx264/aac
    hard cut or a named `xfade` crossfade). `resolve_transition` decides
    cut-vs-blend per item, falling back to the playlist's top-level
    `transition`/`transition_duration` when an item doesn't override them.
+   `compute_segment_offsets` derives each segment's (start, end) in the
+   final joined timeline from `durations`/`transitions` (a crossfade pulls
+   the next segment's start back by its duration, a cut doesn't) —
+   `concat_with_transitions` uses it for `xfade`'s `offset`, and `main()`
+   reuses it to know when each video item's segment plays, for ducking.
 5. `add_music` — optional background track, looped/trimmed and mixed in
-   after joining.
+   after joining. Music plays at `music_volume` throughout by default;
+   `main()` builds a `duck_windows` list of (start, end, volume) for video
+   items whose `music_volume_during_video` (`resolve_video_duck_volume`)
+   differs from `music_volume`, and `add_music` chains one `volume` filter
+   per window (`enable='between(t,start,end)'`) on top of the base level
+   so the music is quieter specifically while that clip's own audio plays.
 
 `-nop`/`--dry-run` short-circuits `main()` into `validate_playlist`
 instead of the pipeline above: it checks every item's `type` (explicit or
-inferred), required fields, and `start`/`end`/`duration` parse, and that
-every referenced media file exists on disk — no ffmpeg/ffprobe calls, no
-temp dir. Keep it in sync with whatever a real render actually requires
-(e.g. a new required field on an item type needs a check added here too).
+inferred), required fields, `start`/`end`/`duration`/`fit`/
+`music_volume_during_video` parse/are valid, and that every referenced
+media file exists on disk — no ffmpeg/ffprobe calls, no temp dir. Keep it
+in sync with whatever a real render actually requires (e.g. a new
+required field on an item type needs a check added here too).
 
 `infer_type` and the `VIDEO_EXTENSIONS`/`IMAGE_EXTENSIONS` sets let `type`
 be omitted on a playlist item (see the README). `add_new_media.py`
@@ -63,6 +79,14 @@ you touch either script.
 
 ## Gotchas already paid for — don't reintroduce these
 
+- **`zoompan`'s `s` doesn't preserve aspect ratio.** The Ken Burns zoom
+  crops a region of the (upscaled) source and scales it to exactly
+  `s=WxH` — if that crop's aspect ratio doesn't match `WxH` (any source
+  whose aspect ratio differs from the output, most commonly a
+  vertical/portrait phone photo in a landscape playlist), the result is
+  stretched, not just cropped. This is why `fit: contain` forces Ken
+  Burns off for that item (`use_kb` in `build_still_segment`) rather than
+  trying to make `zoompan` letterbox-aware.
 - **No `drawtext` filter on some ffmpeg builds.** Many Homebrew/conda
   builds are compiled without `libfreetype`, so ffmpeg's `drawtext` filter
   doesn't exist at all (fails with "No such filter: 'drawtext'"). Captions
@@ -97,14 +121,16 @@ use the synthetic smoke test instead of asking for real media:
 bash tests/run_smoke_test.sh
 ```
 
-This regenerates small synthetic clips/photos/map (`tests/generate_test_assets.py`,
+This regenerates small synthetic clips/photos/map/music (`tests/generate_test_assets.py`,
 pure ffmpeg lavfi sources — no real media needed), renders
 `tests/smoke_playlist.yaml` (which exercises every item type — `title`,
 `video` with and without `start`/`end`, `photo` with a `duration`
-override, `map` — and every transition kind — default fade, per-item
-`cut`, per-item named `xfade` — in one playlist), and checks the output's
-duration and stream layout against the expected values documented in the
-playlist's header comment.
+override, `map` — every transition kind — default fade, per-item `cut`,
+per-item named `xfade` —, `fit: contain` on a portrait clip/photo, and
+background music with `music_volume_during_video` ducking, both the
+playlist-wide default and a per-item override — in one playlist), and
+checks the output's duration and stream layout against the expected
+values documented in the playlist's header comment.
 
 There's no pixel-level assertion. When changing rendering logic (captions,
 Ken Burns, title cards, a new transition), also manually pull a frame and

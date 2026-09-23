@@ -3,12 +3,17 @@
 # xfade) in one small, fast-to-render video built entirely from the
 # synthetic assets in fixtures/ (see generate_test_assets.py). Also
 # exercises `type:` inference (title/clip1/photo1/map1 omit it; photo2/
-# clip2 keep it explicit) alongside explicit `type:`.
+# clip2 keep it explicit) alongside explicit `type:`, per-item `fit:
+# contain` on a portrait clip/photo (clip3/photo3) to check the letterbox
+# path doesn't crop/distort/error, and background music with
+# `music_volume_during_video` ducking (global default on clip1/clip2,
+# per-item override on clip3) — pull a frame from clip3/photo3 to eyeball
+# the black borders (no automated pixel check, see CLAUDE.md).
 #
-# Expected total duration ~= 24.4s:
+# Expected total duration ~= 32.4s:
 #   title(2) + clip1(4, fade-in 0.5) + photo1(6, cut) + photo2(3, fade 0.5)
-#   + map1(3, wipeleft 0.6) + clip2(8, cut)
-#   = (2+4+6+3+3+8) - (0.5+0+0.5+0.6+0) = 26 - 1.6 = 24.4
+#   + map1(3, wipeleft 0.6) + clip2(8, cut) + clip3(5, cut) + photo3(3, cut)
+#   = (2+4+6+3+3+8+5+3) - (0.5+0+0.5+0.6+0+0+0) = 34 - 1.6 = 32.4
 # ffmpeg frame-boundary rounding means +/-1s is fine.
 
 output: smoke_output.mp4
@@ -17,6 +22,10 @@ fps: 24
 photo_duration: 3.0
 transition: fade
 transition_duration: 0.5
+
+music: fixtures/music.mp3
+music_volume: 0.3
+music_volume_during_video: 0.1   # ducked under clip1/clip2's own audio
 
 items:
   - text: "Smoke Test: Titles & Transitions"   # type omitted -> inferred "title" (no path)
@@ -42,4 +51,16 @@ items:
   - type: video
     path: fixtures/clips/clip2.mp4
     # no start/end -> whole clip
+    transition: cut
+
+  - type: video
+    path: fixtures/clips/clip3.mp4   # portrait source
+    fit: contain                      # letterbox instead of cropping/distorting
+    music_volume_during_video: 0.02   # per-item override of the 0.1 default
+    transition: cut
+
+  - type: photo
+    path: fixtures/photos/photo3.jpg  # portrait source
+    fit: contain                      # also disables Ken Burns for this item
+    duration: 3
     transition: cut

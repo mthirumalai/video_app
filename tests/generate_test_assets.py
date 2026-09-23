@@ -48,15 +48,35 @@ def main():
         os.path.join(clips, "clip2.mp4"),
     ])
 
+    print("Generating clip3.mp4 (5s portrait test pattern + tone, for fit: contain)...")
+    run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "lavfi", "-i", "testsrc2=size=720x1280:rate=30:duration=5",
+        "-f", "lavfi", "-i", "sine=frequency=330:duration=5",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+        os.path.join(clips, "clip3.mp4"),
+    ])
+
     print("Generating photo1.jpg / photo2.jpg...")
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:size=1600x1200",
          "-frames:v", "1", os.path.join(photos, "photo1.jpg")])
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=green:size=1600x1200",
          "-frames:v", "1", os.path.join(photos, "photo2.jpg")])
 
+    print("Generating photo3.jpg (portrait, for fit: contain)...")
+    run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=red:size=1200x1600",
+         "-frames:v", "1", os.path.join(photos, "photo3.jpg")])
+
     print("Generating map1.png...")
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=beige:size=1400x1000",
          "-frames:v", "1", os.path.join(maps_, "map1.png")])
+
+    print("Generating music.mp3 (6s tone, looped by make_video.py as needed)...")
+    run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "lavfi", "-i", "sine=frequency=523:duration=6",
+        "-c:a", "libmp3lame", os.path.join(FIXTURES, "music.mp3"),
+    ])
 
     print(f"Done -> {FIXTURES}")
 

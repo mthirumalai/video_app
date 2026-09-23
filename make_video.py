@@ -108,6 +108,7 @@ class Config:
         self.photo_duration = float(data.get("photo_duration", 4.0))
         self.map_duration = float(data.get("map_duration", data.get("photo_duration", 6.0)))
         self.ken_burns = bool(data.get("ken_burns", True))
+        self.fit = data.get("fit", "cover")  # "cover" (crop to fill) or "contain" (letterbox, no crop)
         self.transition = data.get("transition", "fade")  # "cut"/"none", or an ffmpeg xfade name
         self.transition_duration = float(data.get("transition_duration", 0.75))
         self.caption_font = find_font()
@@ -116,6 +117,9 @@ class Config:
         self.title_font_size = int(data.get("title_font_size", 64))
         self.music = data.get("music")
         self.music_volume = float(data.get("music_volume", 0.25))
+        # Lower default music volume while a video item's own audio plays,
+        # so clip dialogue/ambient sound isn't buried under the music.
+        self.music_volume_during_video = float(data.get("music_volume_during_video", self.music_volume))
         self.base_dir = base_dir
 
     def resolve(self, path):
@@ -159,6 +163,32 @@ def render_caption_png(cfg, text, out_path):
     img.save(out_path)
 
 
+def resolve_fit(cfg, item):
+    """"cover" (default: scale to fill the frame, cropping any overflow) or
+    "contain" (scale to fit entirely inside the frame, padding with black
+    borders) — an item can override the playlist's top-level `fit`.
+    """
+    return item.get("fit", cfg.fit)
+
+
+def scale_to_frame_vf(cfg, fit):
+    """The scale (+ crop/pad) portion of a video-filter chain that brings a
+    source to the output resolution. "cover" crops overflow to fill the
+    frame with no borders (may crop a differently-shaped source); "contain"
+    fits the whole source inside the frame, padding with black borders
+    instead of cropping or distorting it.
+    """
+    if fit == "contain":
+        return [
+            f"scale={cfg.width}:{cfg.height}:force_original_aspect_ratio=decrease",
+            f"pad={cfg.width}:{cfg.height}:(ow-iw)/2:(oh-ih)/2:color=black",
+        ]
+    return [
+        f"scale={cfg.width}:{cfg.height}:force_original_aspect_ratio=increase",
+        f"crop={cfg.width}:{cfg.height}",
+    ]
+
+
 def build_video_segment(cfg, item, out_path, tmpdir):
     src = cfg.resolve(item["path"])
     start = parse_timecode(item.get("start", 0))
@@ -168,8 +198,7 @@ def build_video_segment(cfg, item, out_path, tmpdir):
         duration = end - start
 
     vf_chain = ",".join([
-        f"scale={cfg.width}:{cfg.height}:force_original_aspect_ratio=increase",
-        f"crop={cfg.width}:{cfg.height}",
+        *scale_to_frame_vf(cfg, resolve_fit(cfg, item)),
         f"fps={cfg.fps}",
         "setsar=1",
     ])
@@ -221,9 +250,11 @@ def build_still_segment(cfg, item, out_path, tmpdir, is_map):
     default_dur = cfg.map_duration if is_map else cfg.photo_duration
     duration = float(item.get("duration", default_dur))
 
-    # Ken Burns: slow zoom on photos; maps stay static so routes stay readable
-    # unless explicitly requested.
-    use_kb = cfg.ken_burns and not is_map and item.get("ken_burns", True)
+    # Ken Burns: slow zoom on photos; maps stay static so routes stay
+    # readable, and "contain" fit stays static too since zooming would
+    # eventually crop into the letterboxed source (defeating the point).
+    fit = resolve_fit(cfg, item)
+    use_kb = cfg.ken_burns and not is_map and fit != "contain" and item.get("ken_burns", True)
 
     frames = int(duration * cfg.fps)
     if use_kb:
@@ -235,8 +266,7 @@ def build_still_segment(cfg, item, out_path, tmpdir, is_map):
         vf_chain = ",".join([zoom_vf, "setsar=1"])
     else:
         vf_chain = ",".join([
-            f"scale={cfg.width}:{cfg.height}:force_original_aspect_ratio=decrease",
-            f"pad={cfg.width}:{cfg.height}:(ow-iw)/2:(oh-ih)/2:color=black",
+            *scale_to_frame_vf(cfg, "contain"),
             f"fps={cfg.fps}",
             "setsar=1",
         ])
@@ -367,12 +397,27 @@ def infer_type(item):
     )
 
 
-def validate_playlist(items, base_dir):
+FIT_MODES = ("cover", "contain")
+
+
+def validate_playlist(data, base_dir):
     """Check the playlist is well-formed and every referenced media file
     exists on disk, without rendering anything. Returns a list of problem
     strings (empty if everything checks out).
     """
     problems = []
+    items = data.get("items") or []
+
+    top_fit = data.get("fit", "cover")
+    if top_fit not in FIT_MODES:
+        problems.append(f"top-level 'fit': invalid {top_fit!r} (must be one of {FIT_MODES})")
+
+    if "music_volume_during_video" in data:
+        try:
+            float(data["music_volume_during_video"])
+        except (TypeError, ValueError):
+            problems.append(f"top-level 'music_volume_during_video': invalid {data['music_volume_during_video']!r}")
+
     for i, item in enumerate(items):
         label = f"item {i+1}"
         try:
@@ -398,6 +443,9 @@ def validate_playlist(items, base_dir):
             if not os.path.isfile(full_path):
                 problems.append(f"{label} ({kind}): media file not found: {full_path}")
 
+        if "fit" in item and item["fit"] not in FIT_MODES:
+            problems.append(f"{label} ({kind}): invalid 'fit': {item['fit']!r} (must be one of {FIT_MODES})")
+
         if kind == "video":
             for field in ("start", "end"):
                 if field in item:
@@ -405,6 +453,13 @@ def validate_playlist(items, base_dir):
                         parse_timecode(item[field])
                     except (TypeError, ValueError):
                         problems.append(f"{label} ({kind}): invalid {field!r}: {item[field]!r}")
+            if "music_volume_during_video" in item:
+                try:
+                    float(item["music_volume_during_video"])
+                except (TypeError, ValueError):
+                    problems.append(
+                        f"{label} ({kind}): invalid 'music_volume_during_video': {item['music_volume_during_video']!r}"
+                    )
         else:
             if "duration" in item:
                 try:
@@ -473,6 +528,25 @@ def resolve_transition(cfg, item):
     return (kind, duration)
 
 
+def compute_segment_offsets(durations, transitions):
+    """Start/end time of each segment within the final joined track.
+
+    A crossfade boundary pulls the following segment's start back by the
+    transition's duration (it overlaps the previous one); a cut boundary
+    doesn't. `transitions[i]` describes the boundary going into segment
+    i+1, matching `concat_with_transitions`. Used both there and by
+    `add_music` to know exactly when each segment plays in the output.
+    """
+    offsets = [(0.0, durations[0])]
+    accumulated = durations[0]
+    for i in range(1, len(durations)):
+        kind, d = transitions[i - 1]
+        start = accumulated if kind == "cut" else accumulated - d
+        accumulated = start + durations[i]
+        offsets.append((start, accumulated))
+    return offsets
+
+
 def concat_with_transitions(segment_paths, durations, transitions, out_path):
     """Join segments where each boundary is independently either a hard cut
     (ffmpeg's 'concat' filter) or a named crossfade ('xfade' + 'acrossfade').
@@ -493,8 +567,8 @@ def concat_with_transitions(segment_paths, durations, transitions, out_path):
         filter_parts.append(f"[{i}:v]settb=AVTB[v{i}n]")
         filter_parts.append(f"[{i}:a]asettb=AVTB[a{i}n]")
 
+    offsets = compute_segment_offsets(durations, transitions)
     v_prev, a_prev = "v0n", "a0n"
-    accumulated = durations[0]
 
     for i in range(1, n):
         kind, d = transitions[i - 1]
@@ -504,14 +578,12 @@ def concat_with_transitions(segment_paths, durations, transitions, out_path):
             filter_parts.append(
                 f"[{v_prev}][{a_prev}][{v_cur}][{a_cur}]concat=n=2:v=1:a=1[{v_out}][{a_out}]"
             )
-            accumulated = accumulated + durations[i]
         else:
-            offset = accumulated - d
+            offset = offsets[i][0]
             filter_parts.append(
                 f"[{v_prev}][{v_cur}]xfade=transition={kind}:duration={d}:offset={offset}[{v_out}]"
             )
             filter_parts.append(f"[{a_prev}][{a_cur}]acrossfade=d={d}[{a_out}]")
-            accumulated = offset + durations[i]
         v_prev, a_prev = v_out, a_out
 
     filter_complex = ";".join(filter_parts)
@@ -546,16 +618,42 @@ def resolve_music_source(cfg):
     return cache_path
 
 
-def add_music(cfg, video_path, out_path):
+def resolve_video_duck_volume(cfg, item):
+    """Music volume while THIS video item's own segment is playing —
+    overrides the playlist's top-level `music_volume_during_video`.
+    """
+    return float(item.get("music_volume_during_video", cfg.music_volume_during_video))
+
+
+def add_music(cfg, video_path, out_path, duck_windows):
+    """Mix in background music under the joined video's own audio.
+
+    `duck_windows` is a list of (start, end, volume) for video items whose
+    resolved `music_volume_during_video` differs from `cfg.music_volume` —
+    the music is dropped to that volume for just that time window, so a
+    clip's own audio isn't buried under it, then returns to the regular
+    `music_volume` for photos/maps/titles (which have no competing audio).
+    """
     music_path = resolve_music_source(cfg)
     total_dur = ffprobe_duration(video_path)
+
+    stage = "m0"
+    filter_parts = [f"[1:a]volume={cfg.music_volume}[{stage}]"]
+    for i, (start, end, volume) in enumerate(duck_windows):
+        ratio = volume / cfg.music_volume if cfg.music_volume else 0.0
+        next_stage = f"m{i + 1}"
+        filter_parts.append(
+            f"[{stage}]volume=enable='between(t,{start:.3f},{end:.3f})':volume={ratio:.4f}[{next_stage}]"
+        )
+        stage = next_stage
+    filter_parts.append(f"[{stage}]afade=t=out:st={max(total_dur - 2, 0)}:d=2[music]")
+    filter_parts.append("[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[aout]")
+
     cmd = [
         "ffmpeg", "-y",
         "-i", video_path,
         "-stream_loop", "-1", "-i", music_path,
-        "-filter_complex",
-        f"[1:a]volume={cfg.music_volume},afade=t=out:st={max(total_dur-2,0)}:d=2[music];"
-        f"[0:a][music]amix=inputs=2:duration=first:dropout_transition=2[aout]",
+        "-filter_complex", ";".join(filter_parts),
         "-map", "0:v", "-map", "[aout]",
         "-c:v", "copy", "-c:a", "aac", "-t", str(total_dur),
         out_path,
@@ -585,7 +683,7 @@ def main():
         sys.exit("Playlist has no items.")
 
     if args.dry_run:
-        problems = validate_playlist(items, base_dir)
+        problems = validate_playlist(data, base_dir)
         if problems:
             print(f"{len(problems)} problem(s) found:")
             for p in problems:
@@ -606,20 +704,26 @@ def main():
 
         print("Joining segments...")
         joined_path = os.path.join(tmpdir, "joined.mp4")
-        if len(segment_paths) == 1:
+        transitions = [resolve_transition(cfg, item) for item in items[1:]]
+        if len(segment_paths) == 1 or all(kind == "cut" for kind, _ in transitions):
+            # No blending anywhere: the plain concat demuxer is faster
+            # (stream copy, no re-encode) and produces the same result.
             concat_no_transition(segment_paths, tmpdir, joined_path)
         else:
-            transitions = [resolve_transition(cfg, item) for item in items[1:]]
-            if all(kind == "cut" for kind, _ in transitions):
-                # No blending anywhere: the plain concat demuxer is faster
-                # (stream copy, no re-encode) and produces the same result.
-                concat_no_transition(segment_paths, tmpdir, joined_path)
-            else:
-                concat_with_transitions(segment_paths, durations, transitions, joined_path)
+            concat_with_transitions(segment_paths, durations, transitions, joined_path)
 
         if cfg.music:
             print("Mixing background music...")
-            add_music(cfg, joined_path, output_path)
+            offsets = compute_segment_offsets(durations, transitions)
+            duck_windows = []
+            for item, (start, end) in zip(items, offsets):
+                kind = item.get("type") or infer_type(item)
+                if kind != "video":
+                    continue
+                volume = resolve_video_duck_volume(cfg, item)
+                if volume != cfg.music_volume:
+                    duck_windows.append((start, end, volume))
+            add_music(cfg, joined_path, output_path, duck_windows)
         else:
             shutil.copy(joined_path, output_path)
 

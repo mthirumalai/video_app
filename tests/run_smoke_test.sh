@@ -6,7 +6,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(dirname "$HERE")"
-EXPECTED_DURATION=24.4
+EXPECTED_DURATION=32.4
 TOLERANCE=1.5
 
 echo "== Generating synthetic fixtures =="
