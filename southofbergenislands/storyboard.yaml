@@ -1,0 +1,239 @@
+# Example playlist for make_video.py
+#
+# Copy this file, point it at your own exported media/maps, reorder
+# the "items" list into the order you want them to appear, and run:
+#
+#   python3 make_video.py my_playlist.yaml
+#
+# All paths below are relative to wherever this YAML file lives (or use
+# absolute paths).
+
+output: vacation_video.mp4
+
+resolution: [1920, 1080]      # output video size
+fps: 30
+fit: contain
+photo_duration: 4.0           # default seconds to show each photo
+map_duration: 6.0             # default seconds to show each map/route image
+ken_burns: true                # slow zoom/pan on photos (not applied to maps)
+
+transition: fade               # "fade" or "none"
+transition_duration: 0.75      # seconds, only used when transition: fade
+
+music: https://youtu.be/i1l7QLE4ju0
+music_volume: 0.25
+music_volume_during_video: 0.1   # quieter while a clip's own audio plays,
+                                  # so it isn't buried under the music --
+                                  # override per-item with the same field
+                                  # if a specific clip needs it even lower
+
+items:
+  - type: title
+    text: "South of Bergen Islands Bike Tour, July 2026"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+  
+  - type: title
+    text: "The adventures of Madhavan Thirumalai and Mahadevan Iyer"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - type: title
+    text: "Day 1"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - type: photo
+    path: media/IMG_0690.jpeg
+    title: "On the ferry at Bergen"
+    duration: 3
+  
+  - type: video
+    path: media/IMG_0694.mov
+
+  - type: video
+    path: media/IMG_0697.mov
+    title: "Getting off the ferry at Sonde"
+    start: "00:00:00"
+    end: "00:00:11"
+
+  - type: title
+    text: "From Sonde to Rosendal"
+    duration: 2
+
+  - type: photo
+    path: media/IMG_0699.jpeg
+    duration: 2
+
+  - type: photo
+    path: media/IMG_0700.jpeg
+    duration: 2
+
+  - type: photo
+    path: media/IMG_0701.jpeg
+
+  - type: photo
+    path: media/IMG_0704.jpeg
+
+  - type: video
+    path: media/IMG_0705.mov
+    title: "View from the hotel room"
+    start: "00:00:00"
+    end: "00:00:15"
+
+  - type: title
+    text: "Day 2: Hike at Rosendal"
+
+  - path: media/IMG_0708.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0709.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0711.mov
+    start: "00:00:00"
+    end: "00:00:22"
+    # title: ""
+
+  - path: media/IMG_0713.mov
+    start: "00:00:00"
+    end: "00:00:07"
+    # title: ""
+
+  - path: media/IMG_0715.mov
+    start: "00:00:04"
+    end: "00:00:13"
+    title: "The Baroniet of Rosendal"
+
+  - path: media/IMG_0716.jpeg
+    title: "The Stone Park"
+
+  - path: media/IMG_0717.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - type: title
+    text: "Day 3 Bike to Årsnes + ferry to Gjermundshamn + bike to Uggdal"
+    duration: 4
+
+  - path: media/IMG_0722.mov
+    start: "00:00:00"
+    end: "00:00:13"
+    title: ""
+
+  - path: media/IMG_0723.jpeg
+    # duration: 4.0
+    title: "Ølve Cemetery"
+
+  - path: media/IMG_0724.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    title: "Lunde"
+
+  - path: media/IMG_0726.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0728.mov
+    start: "00:00:00"
+    end: "00:00:21"
+    title: "Våge Port"
+
+  - type: title
+    text: "Day 4 Bike to Hodnanes + ferry to Jektavik + bike to Leirvik"
+
+  - path: media/IMG_0737.mov
+    # start: "00:00:00"
+    end: "00:00:22"
+
+  - path: media/IMG_0738.jpeg
+    # duration: 4.0
+    title: "Iyer the maestro photographer"
+
+  - path: media/IMG_0739.mov
+    # start: "00:00:00"
+    end: "00:00:26"
+    # title: ""
+
+  - path: media/IMG_0740.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0741.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - type: title
+    text: "Day 5: Bike to Sandvikvåg + ferry to Husavik + bike to Bekkjarvik"
+
+  - path: media/IMG_0742.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - type: title
+    text: "Art gallery at Bekkjarvik"
+
+  - path: media/IMG_0745.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0746.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0748.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0749.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0751.mov
+    # start: "00:00:00"
+    end: "00:00:40"
+    # title: ""
+
+  - path: media/IMG_0754.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0755.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0756.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - type: title
+    text: "Bike to Hufthamar + Express Boat to Bergen"
+
+  - path: media/IMG_0757.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    title: "Solbjørn mountain"
+
+  - path: media/IMG_0760.mov
+    # start: "00:00:00"
+    end: "00:00:16"
+    # title: ""
+
+  - type: title
+    text: "Bergen"
+
+  - path: media/IMG_0767.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0768.jpeg
+    # duration: 4.0
+    # title: ""
