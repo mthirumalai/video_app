@@ -20,6 +20,13 @@ fit: cover                     # "cover" (fill frame, cropping overflow) or
                                 # "contain" (letterbox, no cropping/distortion)
                                 # -- see the "sunset_viewpoint" item below
 
+# HLG HDR clips (e.g. iPhone video) are tone-mapped to SDR automatically.
+# Optional: override the look; tune it interactively with tune_hdr.py.
+# hdr:
+#   gain: 1.55        # overall brightness
+#   gamma: 1.1        # contrast
+#   saturation: 1.5   # color intensity
+
 # Default transition between items. Any item can override this for just its
 # own incoming boundary (see the "map" and "tram_ride" items below) — mix
 # and match freely, e.g. fades everywhere except one hard "cut".
