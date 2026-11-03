@@ -8,7 +8,7 @@
 # All paths below are relative to wherever this YAML file lives (or use
 # absolute paths).
 
-output: vacation_video.mp4
+output: southofbergenislands.mp4
 
 resolution: [1920, 1080]      # output video size
 fps: 30
@@ -26,6 +26,11 @@ music_volume_during_video: 0.1   # quieter while a clip's own audio plays,
                                   # so it isn't buried under the music --
                                   # override per-item with the same field
                                   # if a specific clip needs it even lower
+
+hdr:
+  gain: 0.35
+  gamma: 0.97
+  saturation: 1.13
 
 items:
   - type: title

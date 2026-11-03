@@ -115,6 +115,7 @@ Top-level settings (all optional, shown with defaults):
 | `fit` | `cover` | `cover` or `contain` — default for every video/photo/map (see below) |
 | `transition` | `fade` | default transition between every pair of items (see below) |
 | `transition_duration` | `0.75` | default crossfade length in seconds |
+| `hdr` | see below | `gain` / `gamma` / `saturation` for the HLG HDR -> SDR conversion (defaults `1.55` / `1.1` / `1.5`); omit it, or any key, to use the defaults. Tune it with `tune_hdr.py` |
 | `music` | *(none)* | path to a background audio track, or a URL (e.g. YouTube) — looped/trimmed to fit |
 | `music_volume` | `0.25` | relative volume of the music under clip audio (used during photos/maps/titles, and during videos unless overridden below) |
 | `music_volume_during_video` | same as `music_volume` | relative volume of the music specifically while a video item's own audio is playing (see [Music](#music) below) |
@@ -278,6 +279,14 @@ anything already listed.
   `fit: cover` (see [Fit](#fit-aspect-ratio--cropping) above) — set
   `fit: contain` on those items (or `fit: contain` at the top level for
   the whole playlist) to letterbox them instead.
+- iPhone video is usually HLG HDR. `make_video.py` detects this per clip
+  and tone-maps it to regular SDR (Rec.709) automatically, so colors
+  aren't washed out — nothing to configure. Other HDR formats (e.g. PQ)
+  aren't converted; a warning is printed for those clips. To hand-tune
+  the look, run `python3 tune_hdr.py path/to/clip.mov --config
+  storyboard.yaml` — a window with `gain` / `gamma` / `saturation`
+  sliders and a live preview frame. "Save to config" writes the values
+  into the playlist's top-level `hdr:` block, which the next render uses.
 - Use `type: title` for section headers ("Day 2: The Fjords") between groups
   of clips — no media file needed, just `text`.
 - Captions are drawn with Pillow and composited onto each clip, so they

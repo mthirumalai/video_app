@@ -8,12 +8,15 @@
 # path doesn't crop/distort/error, and background music with
 # `music_volume_during_video` ducking (global default on clip1/clip2,
 # per-item override on clip3) — pull a frame from clip3/photo3 to eyeball
-# the black borders (no automated pixel check, see CLAUDE.md).
+# the black borders (no automated pixel check, see CLAUDE.md). clip4 is an
+# HLG HDR clip (like iPhone video) that must be tone-mapped to SDR — pull a
+# frame and check the colors aren't washed out.
 #
-# Expected total duration ~= 32.4s:
+# Expected total duration ~= 35.4s:
 #   title(2) + clip1(4, fade-in 0.5) + photo1(6, cut) + photo2(3, fade 0.5)
 #   + map1(3, wipeleft 0.6) + clip2(8, cut) + clip3(5, cut) + photo3(3, cut)
-#   = (2+4+6+3+3+8+5+3) - (0.5+0+0.5+0.6+0+0+0) = 34 - 1.6 = 32.4
+#   + clip4(3, cut)
+#   = (2+4+6+3+3+8+5+3+3) - (0.5+0+0.5+0.6+0+0+0+0) = 37 - 1.6 = 35.4
 # ffmpeg frame-boundary rounding means +/-1s is fine.
 
 output: smoke_output.mp4
@@ -64,3 +67,7 @@ items:
     fit: contain                      # also disables Ken Burns for this item
     duration: 3
     transition: cut
+
+  - type: video
+    path: fixtures/clips/clip4.mov   # HLG HDR source
+    transition: cut                   # auto-detected and tone-mapped to SDR

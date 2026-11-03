@@ -115,6 +115,7 @@ class Config:
         self.caption_size = int(data.get("caption_font_size", 42))
         self.title_duration = float(data.get("title_duration", 3.0))
         self.title_font_size = int(data.get("title_font_size", 64))
+        self.hdr = hdr_settings(data)
         self.music = data.get("music")
         self.music_volume = float(data.get("music_volume", 0.25))
         # Lower default music volume while a video item's own audio plays,
@@ -189,6 +190,73 @@ def scale_to_frame_vf(cfg, fit):
     ]
 
 
+def ffprobe_color_transfer(path):
+    """The first video stream's transfer characteristic tag (e.g.
+    "arib-std-b67" for HLG), or "" if the file doesn't say.
+    """
+    return subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=color_transfer",
+         "-of", "default=nw=1:nk=1", path],
+        capture_output=True, text=True,
+    ).stdout.strip()
+
+
+# iPhone video is HLG HDR (Rec.2020 primaries, "arib-std-b67" transfer).
+# Re-encoding it to 8-bit SDR without converting leaves HLG-encoded values
+# tagged/interpreted as Rec.709, which looks flat and desaturated.
+HLG_TRANSFER = "arib-std-b67"
+HDR_TRANSFERS = {HLG_TRANSFER, "smpte2084"}
+
+
+# Tuned by eye on iPhone footage (see tune_hdr.py); a playlist can override
+# them with a top-level `hdr:` block (gain / gamma / saturation).
+HDR_DEFAULTS = {"gain": 1.55, "gamma": 1.1, "saturation": 1.5}
+
+
+def hdr_settings(data):
+    """HDR tone-map settings from a playlist's `hdr:` block, falling back
+    to HDR_DEFAULTS per key."""
+    block = data.get("hdr") or {}
+    return {k: float(block.get(k, v)) for k, v in HDR_DEFAULTS.items()}
+
+
+def hlg_to_sdr_vf(gain=HDR_DEFAULTS["gain"], gamma=HDR_DEFAULTS["gamma"],
+                  saturation=HDR_DEFAULTS["saturation"]):
+    """Filter chain tone-mapping an HLG (Rec.2020) source to Rec.709 SDR.
+
+    Built only from core filters (`zscale`/libzimg is not compiled into
+    every ffmpeg build, e.g. Homebrew's): the per-channel curve runs in
+    16-bit RGB via `lutrgb` (HLG inverse OETF -> HLG system gamma (`gamma`, nominal 1.2) ->
+    display nits relative to 203-nit reference white, times `gain` ->
+    extended-Reinhard roll-off so the 1000-nit peak lands at 1.0 without
+    clipping highlights -> Rec.709 OETF), then `colorspace` converts the
+    primaries Rec.2020 -> Rec.709 and `eq` adds back a little saturation
+    (SDR-converted HDR otherwise looks flat next to the HDR original).
+    Constants were tuned by eye on iPhone footage.
+    """
+    e = "val/maxval"
+    scene = (f"if(lte({e},0.5),{e}*{e}/3,"
+             f"(exp(({e}-0.55991073)/0.17883277)+0.28466892)/12)")
+    peak = 1000 / 203                  # HLG peak vs SDR reference white
+    x = f"({gain}*{peak}*pow({scene},{gamma}))"
+    y = f"({x}*(1+{x}/{(gain * peak) ** 2})/(1+{x}))"
+    oetf = f"if(lt({y},0.018),4.5*{y},1.099*pow({y},0.45)-0.099)"
+    lut = f"clip({oetf},0,1)*maxval"
+    return [
+        "scale=in_color_matrix=bt2020:out_color_matrix=bt2020",
+        "format=gbrp16le",
+        f"lutrgb=r='{lut}':g='{lut}':b='{lut}'",
+        "scale=out_color_matrix=bt2020",
+        "format=yuv444p10le",
+        "setparams=colorspace=bt2020nc:color_primaries=bt2020:color_trc=bt709",
+        "colorspace=space=bt709:primaries=bt709:trc=bt709:range=tv"
+        ":ispace=bt2020ncl:iprimaries=bt2020:itrc=bt709:irange=tv",
+        "format=yuv420p",
+        f"eq=saturation={saturation}",
+    ]
+
+
 def build_video_segment(cfg, item, out_path, tmpdir):
     src = cfg.resolve(item["path"])
     start = parse_timecode(item.get("start", 0))
@@ -197,8 +265,17 @@ def build_video_segment(cfg, item, out_path, tmpdir):
     if end is not None:
         duration = end - start
 
+    transfer = ffprobe_color_transfer(src)
+    hdr_vf = []
+    if transfer == HLG_TRANSFER:
+        hdr_vf = hlg_to_sdr_vf(**cfg.hdr)
+    elif transfer in HDR_TRANSFERS:
+        print(f"  warning: {item['path']} is {transfer} HDR; only HLG is "
+              f"tone-mapped, so its colors may look off")
+
     vf_chain = ",".join([
         *scale_to_frame_vf(cfg, resolve_fit(cfg, item)),
+        *hdr_vf,
         f"fps={cfg.fps}",
         "setsar=1",
     ])
@@ -236,6 +313,8 @@ def build_video_segment(cfg, item, out_path, tmpdir):
     cmd += [
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
         "-pix_fmt", "yuv420p",
+        *(["-colorspace", "bt709", "-color_primaries", "bt709",
+           "-color_trc", "bt709", "-color_range", "tv"] if hdr_vf else []),
         # Always produce an audio track so every segment has the same
         # streams, even if the source clip is silent/has no audio.
         "-c:a", "aac", "-ar", "48000", "-ac", "2",
@@ -412,6 +491,11 @@ def validate_playlist(data, base_dir):
     if top_fit not in FIT_MODES:
         problems.append(f"top-level 'fit': invalid {top_fit!r} (must be one of {FIT_MODES})")
 
+    if "hdr" in data:
+        try:
+            hdr_settings(data)
+        except (TypeError, ValueError, AttributeError):
+            problems.append(f"top-level 'hdr': expected numeric gain/gamma/saturation, got {data['hdr']!r}")
     if "music_volume_during_video" in data:
         try:
             float(data["music_volume_during_video"])

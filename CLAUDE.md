@@ -108,6 +108,19 @@ you touch either script.
   not match" unless every stream is normalized first. `concat_with_transitions`
   runs `settb=AVTB` / `asettb=AVTB` on every segment up front for exactly
   this reason — keep that if you touch the function.
+- **HLG HDR sources look washed out if just re-encoded.** iPhone `.mov`s
+  are 10-bit HLG / Rec.2020; scaling straight to 8-bit `yuv420p` leaves
+  HLG-encoded values read as Rec.709 SDR (flat, desaturated).
+  `build_video_segment` probes `color_transfer` and, for `arib-std-b67`,
+  inserts `hlg_to_sdr_vf()` and tags the segment bt709. It deliberately
+  uses `lutrgb` + `colorspace` rather than `zscale`/`tonemap`, since
+  Homebrew's ffmpeg has no `zscale` (libzimg). PQ is only warned about.
+  The look is three numbers (gain/gamma/saturation) from the playlist's
+  optional top-level `hdr:` block (`hdr_settings`, defaults in
+  `HDR_DEFAULTS`), tuned with `tune_hdr.py` (Tk sliders; it runs ffmpeg via
+  `Popen` polled from Tk's loop — no threads, since conda's Tcl aborts with
+  "Notifier not initialized"). `tests/generate_test_assets.py` makes an HLG
+  `clip4.mov` for this.
 - **ffmpeg builds vary** across the user's Mac, this dev environment, and
   CI. Don't assume a filter or codec is compiled in; if you add one, check
   `ffmpeg -filters` / `-encoders` or provide a fallback.

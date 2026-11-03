@@ -57,6 +57,17 @@ def main():
         os.path.join(clips, "clip3.mp4"),
     ])
 
+    print("Generating clip4.mov (3s HLG HDR test pattern + tone, for HDR tone-mapping)...")
+    run([
+        "ffmpeg", "-y", "-loglevel", "error",
+        "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30:duration=3",
+        "-f", "lavfi", "-i", "sine=frequency=660:duration=3",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p10le",
+        "-x264-params", "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc",
+        "-c:a", "aac",
+        os.path.join(clips, "clip4.mov"),
+    ])
+
     print("Generating photo1.jpg / photo2.jpg...")
     run(["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:size=1600x1200",
          "-frames:v", "1", os.path.join(photos, "photo1.jpg")])

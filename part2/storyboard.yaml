@@ -1,0 +1,188 @@
+# Example playlist for make_video.py
+#
+# Copy this file, point it at your own exported media/maps, reorder
+# the "items" list into the order you want them to appear, and run:
+#
+#   python3 make_video.py my_playlist.yaml
+#
+# All paths below are relative to wherever this YAML file lives (or use
+# absolute paths).
+
+output: vacation_video.mp4
+
+resolution: [1920, 1080]      # output video size
+fps: 30
+fit: contain
+photo_duration: 4.0           # default seconds to show each photo
+map_duration: 6.0             # default seconds to show each map/route image
+ken_burns: true                # slow zoom/pan on photos (not applied to maps)
+
+transition: fade               # "fade" or "none"
+transition_duration: 0.75      # seconds, only used when transition: fade
+
+music: https://www.youtube.com/watch?v=BKHklv6-hJI
+music_volume: 0.25
+music_volume_during_video: 0.1   # quieter while a clip's own audio plays,
+                                  # so it isn't buried under the music --
+                                  # override per-item with the same field
+                                  # if a specific clip needs it even lower
+
+items:
+  - type: title
+    text: "Norway Trip Part 2, July 2026"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+  
+  - type: title
+    text: "Bergen"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - path: media/IMG_0767.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0768.jpeg
+
+  - path: media/IMAGE_001.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMAGE_003.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMAGE_004.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMAGE_005.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMAGE_006.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0829.mov
+    # start: "00:00:00"
+    end: "00:00:17"
+    # title: ""
+
+  - type: title
+    text: "Gudvangen"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - path: media/WhatsApp Image 2026-10-06 at 23.04.06.jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0778.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - type: title
+    text: "On the electric ferry from Gudvangen to Flam"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - path: media/WhatsApp Image 2026-10-06 at 23.04.06 (1).jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/WhatsApp Image 2026-10-06 at 23.04.06 (2).jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0787.mov
+    start: "00:00:00"
+    end: "00:00:21"
+    # title: ""
+
+  - path: media/IMG_0788.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0791.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0794.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - type: title
+    text: "Flam"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - path: media/IMG_0799.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/WhatsApp Image 2026-10-06 at 23.04.06 (4).jpeg
+    # duration: 4.0
+    # title: ""
+
+  - path: media/IMG_0805.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0810.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0811.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0812.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - type: title
+    text: "On the Flam train"
+    duration: 2
+    # background: "#000000"   # optional, defaults to black
+    # text_color: "#FFFFFF"   # optional, defaults to white
+
+  - path: media/IMG_0813.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0815.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0821.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0823.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
+  - path: media/IMG_0825.mov
+    # start: "00:00:00"
+    # end: "00:00:00"
+    # title: ""
+
